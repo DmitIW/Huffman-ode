@@ -5,5 +5,8 @@ cmake_minimum_required(VERSION 3.0)
 set(CMAKE_CXX_STANDARD 17)
 add_definitions(-Wall -Wextra -pedantic)
 
+include_directories(3rdParty/AMQP-CPP
+                    3rdParty)
+
 add_subdirectory(3rdParty/AMQP-CPP)
 add_subdirectory(src)
