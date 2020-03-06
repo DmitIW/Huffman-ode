@@ -1,8 +1,0 @@
-//
-// Created by dmitri on 06.03.2020.
-//
-
-#ifndef HUFFMANCODE_ASIOHANDLER_H
-#define HUFFMANCODE_ASIOHANDLER_H
-
-#endif //HUFFMANCODE_ASIOHANDLER_H

@@ -1,6 +1,4 @@
-[submodule "AMQP-CPP"]
-	path = AMQP-CPP
-	url = https://github.com/DmitIW/AMQP-CPP.git
-[submodule "asio"]
-	path = asio
-	url = https://github.com/boostorg/asio.git
+
+[submodule "rabbitmq-c"]
+	path = rabbitmq-c
+	url = https://github.com/alanxz/rabbitmq-c.git
