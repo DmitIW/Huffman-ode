@@ -14,7 +14,18 @@ if(NOT EXISTS ${AMQP_PATH}/.git)
     )
 ENDIF()
 
+set(BOOST_PATH ${CMAKE_SOURCE_DIR}/asio)
+if(NOT EXISTS ${BOOST_PATH}/.git)
+    MESSAGE("Submodule not init: asio")
+    EXECUTE_PROCESS(
+            COMMAND sh -c "git submodule update --init"
+            WORKING_DIRECTORY ${BOOST_PATH}
+    )
+ENDIF()
+
 include_directories(AMQP-CPP)
+include_directories(asio)
 
 add_subdirectory(AMQP-CPP)
+add_subdirectory(asio)
 add_subdirectory(src)

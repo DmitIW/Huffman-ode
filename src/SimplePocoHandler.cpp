@@ -23,7 +23,9 @@ namespace utility {
 
         inline bool is_full() const { return m_use >= m_data.size(); }
     public:
-        explicit Buffer(size_t size): m_data(size, 0), m_use(0) {}
+        explicit Buffer(size_t size): m_data(size, 0), m_use(0) {
+            cout << "Buffer cont\n";
+        }
 
         size_t write(const char* data, size_t size) {
             if (is_full())
@@ -61,7 +63,7 @@ public:
     bool connected;
     bool quit;
 
-    optional<unique_ptr<AMQP::Connection, void(*)(AMQP::Connection*)>> connection;
+    AMQP::Connection* connection;
 
     utility::Buffer inputBuffer;
     utility::Buffer outputBuffer;
@@ -71,7 +73,7 @@ public:
         socket(),
         connected(false),
         quit(false),
-        connection(nullopt),
+        connection(nullptr),
         inputBuffer(SimplePocoHandler::BUFFER_SIZE),
         outputBuffer(SimplePocoHandler::BUFFER_SIZE),
         tmpBuffer(SimplePocoHandler::TEMP_BUFFER_SIZE) {}
@@ -86,6 +88,7 @@ SimplePocoHandler::~SimplePocoHandler() { close(); }
 
 void SimplePocoHandler::loop() {
     try {
+        cout << "SimplePocoHandler::loop\n";
         while(!m_impl->quit) {
             int socket_avail = m_impl->socket.available();
             size_t input_buf_avail = m_impl->inputBuffer.available();
@@ -102,8 +105,8 @@ void SimplePocoHandler::loop() {
                 throw Poco::Exception("Problem with socket.");
             }
 
-            if (m_impl->connection.has_value() && input_buf_avail != 0) {
-                size_t count = m_impl->connection.value()->parse(m_impl->inputBuffer.cbegin(), input_buf_avail);
+            if (m_impl->connection && input_buf_avail != 0) {
+                size_t count = m_impl->connection->parse(m_impl->inputBuffer.cbegin(), input_buf_avail);
 
                 if (count == input_buf_avail)
                     m_impl->inputBuffer.drain();
@@ -118,6 +121,8 @@ void SimplePocoHandler::loop() {
         if (m_impl->outputBuffer.available() != 0)
             sendDataFromBuffer();
 
+        cout << "SimplePocoHandler::loop end\n";
+
     } catch (const Poco::Exception& exc) {
         cerr << "SimplePocoHandler::loop :: POCO exception: " << exc.displayText() << "\n";
     } catch (...) {
@@ -129,7 +134,8 @@ void SimplePocoHandler::loop() {
 void SimplePocoHandler::quit() { m_impl->quit = true; }
 void SimplePocoHandler::close() { m_impl->socket.close(); }
 void SimplePocoHandler::onData(AMQP::Connection *connection, const char *data, size_t size) {
-    m_impl->connection.emplace(connection, [](AMQP::Connection*){});
+    cout << "SimplePocoHandler::onData\n";
+    m_impl->connection = connection;
     const size_t writen = m_impl->outputBuffer.write(data, size);
     if (writen != size) {
         sendDataFromBuffer();
