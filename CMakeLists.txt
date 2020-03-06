@@ -2,7 +2,7 @@ set(PROJECT HuffmanCode)
 project(${PROJECT} C CXX)
 cmake_minimum_required(VERSION 3.0)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 add_definitions(-Wall -Wextra -pedantic)
 
 set(AMQP_PATH ${CMAKE_SOURCE_DIR}/AMQP-CPP)

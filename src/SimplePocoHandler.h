@@ -11,14 +11,12 @@
 class SimplePocoHandlerImpl;
 class SimplePocoHandler: public AMQP::ConnectionHandler {
 private:
-    std::shared_ptr<SimplePocoHandlerImpl> m_impl;
+    std::unique_ptr<SimplePocoHandlerImpl> m_impl;
 public:
-    static constexpr size_t MB = 1024 * 1024;
-    static constexpr size_t BUFFER_SIZE = 8 * MB;
-    static constexpr size_t TEMP_BUFFER_SIZE = MB;
+    friend SimplePocoHandlerImpl;
 
     SimplePocoHandler(const std::string& host, uint16_t port);
-    ~SimplePocoHandler();
+    ~SimplePocoHandler() override;
 
     void loop();
     void quit();
@@ -29,7 +27,9 @@ public:
     SimplePocoHandler& operator=(const SimplePocoHandler&) = delete;
 
 private:
-
+    static constexpr size_t MB = 1024 * 1024;
+    static constexpr size_t BUFFER_SIZE = 8 *MB;
+    static constexpr size_t TEMP_BUFFER_SIZE = 1 *MB;
 
     void onData(AMQP::Connection* connection, const char* data, size_t size) override;
     void onReady(AMQP::Connection* connection) override;
@@ -37,6 +37,7 @@ private:
     void onClosed(AMQP::Connection* connection) override;
 
     void close();
+    void sendDataFromBuffer();
 };
 
 #endif //HUFFMANCODE_SIMPLEPOCOHANDLER_H
