@@ -1,5 +1,5 @@
 add_library(poco_simple_handler SimplePocoHandler.h SimplePocoHandler.cpp)
-target_link_libraries(poco_simple_handler amqp-cpp PocoNet PocoFoundation)
+target_link_libraries(poco_simple_handler PocoNet PocoFoundation)
 
 set(PROGS )
 
