@@ -7,53 +7,56 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstdarg>
+
 #include <iostream>
 
 using namespace std;
 
+AMQP::Connector::Connector(UTILITY::Address address, AMQP::Socket socket, amqp_connection_state_t conn,
+                           int socket_status, int channel_num, string exchange,
+                           string queue_key):
+        conn_(conn),
+        socket_(socket),
+        address_(move(address)),
+        socket_status_(socket_status),
+        channel_num_(channel_num),
+        exchange_(move(exchange)),
+        queue_key_(move(queue_key)) {}
 
+int AMQP::Connector::GetSocketStatus() const { return socket_status_; }
 
-AMQP::ConnectionHandler::ConnectionHandler(UTILITY::Address address, AMQP::Socket socket, amqp_connection_state_t conn,
-                                           int socket_status, amqp_bytes_t queue_name, int channel_num, string exchange,
-                                           string queue_key):
-    conn_(conn),
-    socket_(move(socket)),
-    address_(move(address)),
-    socket_status_(socket_status),
-    channel_num_(channel_num),
-    queue_name_(move(queue_name)),
-    exchange_(move(exchange)),
-    queue_key_(move(queue_key)),
-    props_() {}
-
-int AMQP::ConnectionHandler::GetSocketStatus() const { return socket_status_; }
-
-void AMQP::ConnectionHandler::SetPublisherMode() {
-    props_._flags = AMQP_BASIC_CONTENT_TYPE_FLAG | AMQP_BASIC_DELIVERY_MODE_FLAG;
-    props_.content_type = amqp_cstring_bytes("text/plain");
-    props_.delivery_mode = 2; /* persistent delivery mode */
+AMQP::SpeakHandler AMQP::Connector::CreateSpeaker(SpeakAdapter adapter) {
+    return adapter.SetConnector(this).Build();
 }
 
-void AMQP::ConnectionHandler::SetConsumerMode() {
-    amqp_basic_consume(conn_, channel_num_,
-            queue_name_, amqp_empty_bytes, 0, 1, 0,
-                       amqp_empty_table);
-    UTILITY::die_on_amqp_error(amqp_get_rpc_reply(conn_), "Consuming");
+AMQP::ConsumeHandler AMQP::Connector::CreateConsumer(ConsumeAdapter adapter) {
+    return adapter.SetConnector(this).Build();
 }
 
-
-
-void AMQP::ConnectionHandler::Publish(const std::string &message) {
-    UTILITY::die_on_error(amqp_basic_publish(conn_, channel_num_, amqp_cstring_bytes(exchange_.c_str()),
-                                    amqp_cstring_bytes(queue_key_.c_str()), 0, 0,
-                                    &props_, amqp_cstring_bytes(message.c_str())),
-                 "Publishing");
-}
-
-AMQP::ConnectionHandler::~ConnectionHandler() {
+AMQP::Connector::~Connector() {
     amqp_channel_close(conn_, channel_num_, AMQP_REPLY_SUCCESS);
     amqp_connection_close(conn_, AMQP_REPLY_SUCCESS);
     amqp_destroy_connection(conn_);
+}
+
+AMQP::ConsumeHandler::ConsumeHandler(const AMQP::Connector *c, amqp_bytes_t queue_name):
+    connection_(c),
+    queue_name_(queue_name) {}
+
+AMQP::ConsumeHandler::~ConsumeHandler() {
+    amqp_bytes_free(queue_name_);
+}
+
+AMQP::SpeakHandler::SpeakHandler(const Connector *c, amqp_basic_properties_t props):
+ conn_(c), props_(props) {}
+
+void AMQP::SpeakHandler::Publish(const std::string &message) {
+    UTILITY::die_on_error(amqp_basic_publish(conn_->conn_, conn_->channel_num_,
+            amqp_cstring_bytes(conn_->exchange_.c_str()),
+            amqp_cstring_bytes(conn_->queue_key_.c_str()),
+            0, 0,
+                                             &props_, amqp_cstring_bytes(message.c_str())),
+                          "Publishing");
 }
 
 //
@@ -91,10 +94,6 @@ AMQP::ConnectionBuilder & AMQP::ConnectionBuilder::SetExchangeFlags(uint16_t p, 
     exchange_declare_flags = (p << 3u) + (d << 2u) + (ad << 1u) + (i);
     return *this;
 }
-AMQP::ConnectionBuilder & AMQP::ConnectionBuilder::SetQueueFlags(uint16_t p, uint16_t d, uint16_t e, uint16_t ad) {
-    queue_declare_flags = (p << 3u) + (d << 2u) + (e << 1u) + (ad);
-    return *this;
-}
 AMQP::ConnectionBuilder::ConnectionBuilder():
     conn(),
     socket(nullptr),
@@ -111,11 +110,10 @@ AMQP::ConnectionBuilder::ConnectionBuilder():
     exchange(UTILITY::DEFAULT_EXCHANGE),
     exchange_type(UTILITY::DEFAULT_EXCHANGE_TYPE),
     exchange_declare_flags(0x04u),
-    queue_declare_flags(0x04u),
     bindingKey(UTILITY::DEFAULT_BINDING_KEY),
     queue_name() {}
 
-AMQP::ConnectionHandler AMQP::ConnectionBuilder::Build() {
+AMQP::Connector AMQP::ConnectionBuilder::Build() {
     conn = amqp_new_connection();
 
     socket = amqp_tcp_socket_new(conn);
@@ -138,27 +136,70 @@ AMQP::ConnectionHandler AMQP::ConnectionBuilder::Build() {
     amqp_channel_open(conn, channel_num);
     UTILITY::die_on_amqp_error(amqp_get_rpc_reply(conn), "Opening channel");
     cerr << "Channel open\n";
+
+    return AMQP::Connector(
+            address, socket, conn, socket_status, channel_num,
+            move(exchange), move(bindingKey)
+            );
+}
+
+AMQP::ConsumeAdapter::ConsumeAdapter():
+    conn_(nullptr),
+    queue_declare_flags(0x04u),
+    queue_name_() {}
+AMQP::ConsumeAdapter & AMQP::ConsumeAdapter::SetQueueFlags(uint16_t p, uint16_t d, uint16_t e, uint16_t ad) {
+    queue_declare_flags = (p << 3u) + (d << 2u) + (e << 1u) + (ad);
+    return *this;
+}
+AMQP::ConsumeAdapter & AMQP::ConsumeAdapter::SetConnector(const Connector *c) {
+    conn_ = c;
+    return *this;
+}
+AMQP::ConsumeHandler AMQP::ConsumeAdapter::Build() {
+    if (!conn_)
+        throw runtime_error("ERROR:: connector to rabbitmq not found");
+
     {
         amqp_queue_declare_ok_t *r = amqp_queue_declare(
-                conn, channel_num,
+                conn_->conn_, conn_->channel_num_,
                 amqp_empty_bytes,
                 queue_declare_flags & PASSIVE,
                 queue_declare_flags & DURABLE,
                 queue_declare_flags & EXCLUSIVE,
                 queue_declare_flags & AUTO_DELETE_QUEUE,
                 amqp_empty_table);
-        UTILITY::die_on_amqp_error(amqp_get_rpc_reply(conn), "Declaring queue");
-        queue_name = amqp_bytes_malloc_dup(r->queue);
-        if (queue_name.bytes == nullptr) {
+        UTILITY::die_on_amqp_error(amqp_get_rpc_reply(conn_->conn_), "Declaring queue");
+        queue_name_ = amqp_bytes_malloc_dup(r->queue);
+        if (queue_name_.bytes == nullptr) {
             fprintf(stderr, "Out of memory while copying queue name");
             exit(1);
         }
     }
-    amqp_queue_bind(conn, channel_num, queue_name, amqp_cstring_bytes(exchange.c_str()),
-                    amqp_cstring_bytes(bindingKey.c_str()), amqp_empty_table);
-    UTILITY::die_on_amqp_error(amqp_get_rpc_reply(conn), "Binding queue");
+    amqp_queue_bind(conn_->conn_, conn_->channel_num_, queue_name_, amqp_cstring_bytes(conn_->exchange_.c_str()),
+                    amqp_cstring_bytes(conn_->queue_key_.c_str()), amqp_empty_table);
+    UTILITY::die_on_amqp_error(amqp_get_rpc_reply(conn_->conn_), "Binding queue");
     cerr << "Queue binding over\n";
-    return AMQP::ConnectionHandler(
-            address, move(socket), conn, socket_status, queue_name, channel_num, move(exchange), move(bindingKey)
-            );
+
+    amqp_basic_consume(conn_->conn_, conn_->channel_num_,
+                       queue_name_, amqp_empty_bytes, 0, 1, 0,
+                       amqp_empty_table);
+    UTILITY::die_on_amqp_error(amqp_get_rpc_reply(conn_->conn_), "Consuming");
+
+    return ConsumeHandler(
+        conn_, queue_name_
+    );
+}
+
+AMQP::SpeakAdapter::SpeakAdapter():
+    conn_(nullptr),
+    props_() {}
+
+AMQP::SpeakAdapter & AMQP::SpeakAdapter::SetConnector(const Connector *c) { conn_ = c; return *this; }
+AMQP::SpeakHandler AMQP::SpeakAdapter::Build() {
+    props_._flags = AMQP_BASIC_CONTENT_TYPE_FLAG | AMQP_BASIC_DELIVERY_MODE_FLAG;
+    props_.content_type = amqp_cstring_bytes("text/plain");
+    props_.delivery_mode = 2; /* persistent delivery mode */
+    return {
+        conn_, props_
+    };
 }

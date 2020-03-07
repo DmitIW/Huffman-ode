@@ -2,8 +2,8 @@
 // Created by dmitri on 06.03.2020.
 //
 
-#ifndef HUFFMANCODE_QUEUECONNECTIONHANDLER_H
-#define HUFFMANCODE_QUEUECONNECTIONHANDLER_H
+#ifndef HUFFMANCODE_QUEUEConnector_H
+#define HUFFMANCODE_QUEUEConnector_H
 
 #include <amqp.h>
 #include <amqp_tcp_socket.h>
@@ -42,48 +42,103 @@ namespace AMQP {
     using Socket = amqp_socket_t*;
 
     class ConnectionBuilder;
-    class ConnectionHandler {
+    class ConsumeAdapter;
+    class SpeakAdapter;
+
+    class ConsumeHandler;
+    class SpeakHandler;
+
+    class Connector {
         friend class ConnectionBuilder;
+        friend class ConsumeHandler;
+        friend class SpeakHandler;
+        friend class ConsumeAdapter;
+        friend class SpeakAdapter;
     private:
         amqp_connection_state_t conn_;
         Socket socket_;
         UTILITY::Address address_;
         int socket_status_;
         int channel_num_;
-        amqp_bytes_t queue_name_;
         std::string exchange_;
         std::string queue_key_;
-        amqp_basic_properties_t props_;
 
     public:
         int GetSocketStatus() const;
 
-        void SetPublisherMode();
-        void SetConsumerMode();
+        ConsumeHandler CreateConsumer(ConsumeAdapter adapter);
+        SpeakHandler CreateSpeaker(SpeakAdapter adapter);
 
-        void Publish(const std::string& message);
+        Connector(const Connector&) = delete;
+        Connector& operator=(const Connector&) = delete;
 
+        Connector(Connector&&) = default;
+        Connector& operator=(Connector&&) = default;
+
+        ~Connector();
+    private:
+        Connector(UTILITY::Address address, Socket socket, amqp_connection_state_t conn,
+                int socket_status, int channel_num, std::string exchange, std::string queue_key);
+
+    };
+
+    class ConsumeHandler {
+        friend class ConsumeAdapter;
+    private:
+        const Connector* connection_;
+        amqp_bytes_t queue_name_;
+        ConsumeHandler(const Connector* c, amqp_bytes_t queue_name);
+    public:
+        ConsumeHandler(const ConsumeHandler&) = delete;
+        ConsumeHandler& operator=(const ConsumeHandler&) = delete;
+        ~ConsumeHandler();
         template<class Callback>
         void Consume(Callback callback) {
             amqp_rpc_reply_t res;
             amqp_envelope_t envelope;
-            amqp_maybe_release_buffers(conn_);
-            res = amqp_consume_message(conn_, &envelope, NULL, 0);
+            amqp_maybe_release_buffers(connection_->conn_);
+            res = amqp_consume_message(connection_->conn_, &envelope, NULL, 0);
             callback(res, envelope);
             amqp_destroy_envelope(&envelope);
         }
+        template <class Callback>
+        void ConsumeLoop(Callback callback) {
+            while(true)
+                Consume(callback);
+        }
+    };
 
-        ConnectionHandler(const ConnectionHandler&) = delete;
-        ConnectionHandler& operator=(const ConnectionHandler&) = delete;
-
-        ConnectionHandler(ConnectionHandler&&) = default;
-        ConnectionHandler& operator=(ConnectionHandler&&) = default;
-
-        ~ConnectionHandler();
+    class SpeakHandler {
+        friend class SpeakAdapter;
     private:
-        ConnectionHandler(UTILITY::Address address, Socket socket, amqp_connection_state_t conn,
-                int socket_status, amqp_bytes_t queue_name, int channel_num, std::string exchange, std::string queue_key);
+        const Connector* conn_;
+        amqp_basic_properties_t props_;
 
+        SpeakHandler(const Connector* c, amqp_basic_properties_t props);
+    public:
+        void Publish(const std::string& message);
+    };
+
+    class ConsumeAdapter {
+    private:
+        const Connector* conn_;
+        uint16_t queue_declare_flags;
+        amqp_bytes_t queue_name_;
+    public:
+        ConsumeAdapter();
+        ConsumeAdapter& SetConnector(const Connector* c);
+        ConsumeAdapter& SetQueueFlags(uint16_t p, uint16_t d, uint16_t e, uint16_t ad);
+        ConsumeHandler Build();
+    };
+
+    class SpeakAdapter {
+    private:
+        const Connector* conn_;
+        amqp_basic_properties_t props_;
+    public:
+        SpeakAdapter();
+        SpeakAdapter& SetConnector(const Connector* c);
+        SpeakHandler Build();
     };
 
     class ConnectionBuilder {
@@ -103,7 +158,6 @@ namespace AMQP {
         std::string exchange;
         std::string exchange_type;
         uint16_t exchange_declare_flags;
-        uint16_t queue_declare_flags;
         std::string bindingKey;
         amqp_bytes_t queue_name;
     public:
@@ -121,12 +175,11 @@ namespace AMQP {
         ConnectionBuilder& SetExchange(std::string exch);
         ConnectionBuilder& SetExchangeType(std::string exch_t);
         ConnectionBuilder& SetExchangeFlags(uint16_t p, uint16_t d, uint16_t ad, uint16_t i);
-        ConnectionBuilder& SetQueueFlags(uint16_t p, uint16_t d, uint16_t e, uint16_t ad);
         ConnectionBuilder& SetBindingKey(std::string binding_key);
-        ConnectionHandler Build();
+        Connector Build();
     };
 }
 
 
 
-#endif //HUFFMANCODE_QUEUECONNECTIONHANDLER_H
+#endif //HUFFMANCODE_QUEUEConnector_H

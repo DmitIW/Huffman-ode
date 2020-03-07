@@ -5,14 +5,16 @@
 #include "QueueConnectionHandler.h"
 
 int main() {
-    using AMQP::ConnectionHandler;
-    using AMQP::ConnectionBuilder;
-    ConnectionHandler handler = ConnectionBuilder().Build();
+    using Builder = AMQP::ConnectionBuilder;
+    using Connector = AMQP::Connector;
+    using Speaker = AMQP::SpeakHandler;
 
-    handler.SetPublisherMode();
-    handler.Publish("First message: Hello, World!");
-    handler.Publish("Second message: I'm still alive;)");
-    handler.Publish("Third message: Tired with all these, for restful death I cry:\n"
+    Connector connector = Builder().Build();
+    Speaker speaker = connector.CreateSpeaker(AMQP::SpeakAdapter());
+
+    speaker.Publish("First message: Hello, World!");
+    speaker.Publish("Second message: I'm still alive;)");
+    speaker.Publish("Third message: Tired with all these, for restful death I cry:\n"
                     "As to behold desert a beggar born,\n"
                     "And needy nothing trimmed in jollity,\n"
                     "And purest faith unhappily forsworn,\n"
@@ -26,5 +28,5 @@ int main() {
                     "And captive good attending captain10 ill:\n"
                     "Tired with all these, from these would I be gone,\n"
                     "Save that, to die, I leave my love alone.");
-    handler.Publish("Fourth message: It was Shakespear sonnet");
+    speaker.Publish("Fourth message: It was Shakespear sonnet");
 }

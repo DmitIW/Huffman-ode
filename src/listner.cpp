@@ -24,21 +24,19 @@ struct MessagePrint {
                    (char *)envelope.message.properties.content_type.bytes);
         }
         printf("----\n");
-
-        UTILITY::amqp_dump(envelope.message.body.bytes, envelope.message.body.len);
+        cout << string_view{(char*)envelope.message.body.bytes, envelope.message.body.len} << endl;
+        printf("\n");
+        printf("Length: %lu\n", envelope.message.body.len);
+        printf("\n\n\n");
     }
 };
 
 int main() {
-    using AMQP::ConnectionHandler;
-    using AMQP::ConnectionBuilder;
-    ConnectionHandler handler = ConnectionBuilder().Build();
+    using Builder = AMQP::ConnectionBuilder;
+    using Connector = AMQP::Connector;
+    using Consumer = AMQP::ConsumeHandler;
 
-    cout << handler.GetSocketStatus() << endl;
-
-    handler.SetConsumerMode();
-    for (size_t i = 0; i < 10u; i++) {
-        handler.Consume(MessagePrint());
-    }
-
+    Connector connector = Builder().Build();
+    Consumer consumer = connector.CreateConsumer(AMQP::ConsumeAdapter());
+    consumer.ConsumeLoop(MessagePrint());
 }
