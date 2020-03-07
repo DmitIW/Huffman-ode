@@ -9,7 +9,7 @@ IF (NOT EXISTS rabbitmq-c/.git)
     message("Rabbitmq-c doesn't exists. Loading submodule...")
     execute_process(
             COMMAND sh -c "git submodule update --init"
-            WORKING_DIRECTORY rabbitmq-c
+            WORKING_DIRECTORY ./
     )
 ENDIF()
 

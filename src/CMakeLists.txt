@@ -1,2 +1,10 @@
-add_executable(${PROJECT} QueueConnectionHandler.h QueueConnectionHandler.cpp utility.cpp listner.cpp)
-target_link_libraries(${PROJECT} rabbitmq)
+add_library(QueueHandler QueueConnectionHandler.h QueueConnectionHandler.cpp utility.cpp)
+target_link_libraries(QueueHandler rabbitmq)
+
+SET (WORKERS listner
+             speaker)
+
+FOREACH(item ${WORKERS})
+    add_executable(${item} "${item}.cpp")
+    target_link_libraries(${item} QueueHandler rabbitmq)
+ENDFOREACH()

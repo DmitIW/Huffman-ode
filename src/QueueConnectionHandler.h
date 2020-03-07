@@ -33,6 +33,9 @@ namespace UTILITY {
 
     void die(const char *fmt, ...);
     void die_on_amqp_error(amqp_rpc_reply_t x, char const *context);
+    void die_on_error(int x, char const *context);
+
+    void amqp_dump(void const *buffer, size_t len);
 }
 
 namespace AMQP {
@@ -48,18 +51,38 @@ namespace AMQP {
         int socket_status_;
         int channel_num_;
         amqp_bytes_t queue_name_;
+        std::string exchange_;
+        std::string queue_key_;
+        amqp_basic_properties_t props_;
 
     public:
         int GetSocketStatus() const;
+
+        void SetPublisherMode();
+        void SetConsumerMode();
+
+        void Publish(const std::string& message);
+
+        template<class Callback>
+        void Consume(Callback callback) {
+            amqp_rpc_reply_t res;
+            amqp_envelope_t envelope;
+            amqp_maybe_release_buffers(conn_);
+            res = amqp_consume_message(conn_, &envelope, NULL, 0);
+            callback(res, envelope);
+            amqp_destroy_envelope(&envelope);
+        }
 
         ConnectionHandler(const ConnectionHandler&) = delete;
         ConnectionHandler& operator=(const ConnectionHandler&) = delete;
 
         ConnectionHandler(ConnectionHandler&&) = default;
         ConnectionHandler& operator=(ConnectionHandler&&) = default;
+
+        ~ConnectionHandler();
     private:
         ConnectionHandler(UTILITY::Address address, Socket socket, amqp_connection_state_t conn,
-                int socket_status, amqp_bytes_t queue_name, int channel_num);
+                int socket_status, amqp_bytes_t queue_name, int channel_num, std::string exchange, std::string queue_key);
 
     };
 
@@ -103,5 +126,7 @@ namespace AMQP {
         ConnectionHandler Build();
     };
 }
+
+
 
 #endif //HUFFMANCODE_QUEUECONNECTIONHANDLER_H

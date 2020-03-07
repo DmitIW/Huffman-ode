@@ -14,15 +14,51 @@ using namespace std;
 
 
 AMQP::ConnectionHandler::ConnectionHandler(UTILITY::Address address, AMQP::Socket socket, amqp_connection_state_t conn,
-                                           int socket_status, amqp_bytes_t queue_name, int channel_num):
+                                           int socket_status, amqp_bytes_t queue_name, int channel_num, string exchange,
+                                           string queue_key):
     conn_(conn),
     socket_(move(socket)),
     address_(move(address)),
     socket_status_(socket_status),
     channel_num_(channel_num),
-    queue_name_(move(queue_name)) {}
+    queue_name_(move(queue_name)),
+    exchange_(move(exchange)),
+    queue_key_(move(queue_key)),
+    props_() {}
 
 int AMQP::ConnectionHandler::GetSocketStatus() const { return socket_status_; }
+
+void AMQP::ConnectionHandler::SetPublisherMode() {
+    props_._flags = AMQP_BASIC_CONTENT_TYPE_FLAG | AMQP_BASIC_DELIVERY_MODE_FLAG;
+    props_.content_type = amqp_cstring_bytes("text/plain");
+    props_.delivery_mode = 2; /* persistent delivery mode */
+}
+
+void AMQP::ConnectionHandler::SetConsumerMode() {
+    amqp_basic_consume(conn_, channel_num_,
+            queue_name_, amqp_empty_bytes, 0, 1, 0,
+                       amqp_empty_table);
+    UTILITY::die_on_amqp_error(amqp_get_rpc_reply(conn_), "Consuming");
+}
+
+
+
+void AMQP::ConnectionHandler::Publish(const std::string &message) {
+    UTILITY::die_on_error(amqp_basic_publish(conn_, channel_num_, amqp_cstring_bytes(exchange_.c_str()),
+                                    amqp_cstring_bytes(queue_key_.c_str()), 0, 0,
+                                    &props_, amqp_cstring_bytes(message.c_str())),
+                 "Publishing");
+}
+
+AMQP::ConnectionHandler::~ConnectionHandler() {
+    amqp_channel_close(conn_, channel_num_, AMQP_REPLY_SUCCESS);
+    amqp_connection_close(conn_, AMQP_REPLY_SUCCESS);
+    amqp_destroy_connection(conn_);
+}
+
+//
+//
+//
 
 #define JOIN(A, B) A ## B
 #define CONNECTION_BUILDER_SETTER_MOVE(FuncSuffix, TYPE, INTO_VALUE, LOCAL_VALUE) \
@@ -98,15 +134,7 @@ AMQP::ConnectionHandler AMQP::ConnectionBuilder::Build() {
                     login.c_str(), password.c_str()),
                       "Logging in");
     cerr << "Login completed\n";
-//    amqp_exchange_declare(conn, channel_num,
-//                          amqp_cstring_bytes(exchange.c_str()),
-//                          amqp_cstring_bytes(exchange_type.c_str()),
-//                          exchange_declare_flags & PASSIVE,
-//                          exchange_declare_flags & DURABLE,
-//                          exchange_declare_flags & AUTO_DELETE_EXCHANGE,
-//                          exchange_declare_flags & INTERNAL,
-//                          amqp_empty_table);
-    cerr << "Exchange declared\n";
+
     amqp_channel_open(conn, channel_num);
     UTILITY::die_on_amqp_error(amqp_get_rpc_reply(conn), "Opening channel");
     cerr << "Channel open\n";
@@ -131,6 +159,6 @@ AMQP::ConnectionHandler AMQP::ConnectionBuilder::Build() {
     UTILITY::die_on_amqp_error(amqp_get_rpc_reply(conn), "Binding queue");
     cerr << "Queue binding over\n";
     return AMQP::ConnectionHandler(
-            address, move(socket), conn, socket_status, queue_name, channel_num
+            address, move(socket), conn, socket_status, queue_name, channel_num, move(exchange), move(bindingKey)
             );
 }
