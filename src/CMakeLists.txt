@@ -1,9 +1,16 @@
-add_library(poco_simple_handler SimplePocoHandler.h SimplePocoHandler.cpp)
-target_link_libraries(poco_simple_handler amqp-cpp PocoNet PocoFoundation)
+include_directories(utility)
+add_subdirectory(utility)
 
-set(PROGS )
+include_directories(connectionHandler)
+add_subdirectory(connectionHandler)
 
-foreach(item ${PROGS})
+include_directories(workers)
+add_subdirectory(workers)
+
+SET (PROGS listner
+             speaker)
+
+FOREACH(item ${PROGS})
     add_executable(${item} "${item}.cpp")
-    target_link_libraries(${item} amqp-cpp poco_simple_handler)
-endforeach(item)
+    target_link_libraries(${item} utility_h Workers QueueConnectionHandler rabbitmq)
+ENDFOREACH()

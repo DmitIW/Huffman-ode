@@ -1,0 +1,2 @@
+add_library(QueueConnectionHandler QueueConnectionHandler.h QueueConnectionHandler.cpp)
+target_link_libraries(QueueConnectionHandler rabbitmq utility_h)
