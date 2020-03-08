@@ -9,6 +9,8 @@
 #include <list>
 #include <functional>
 
+#include "utility.hpp"
+
 template <class Callback>
 class WorkersPool {
 private:

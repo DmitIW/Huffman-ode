@@ -4,6 +4,7 @@
 
 #include "QueueConnectionHandler.h"
 #include "Worker.h"
+#include "utility.hpp"
 
 #include <iostream>
 #include <chrono>

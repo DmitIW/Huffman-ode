@@ -1,12 +1,16 @@
-add_library(QueueHandler QueueConnectionHandler.h QueueConnectionHandler.cpp utility.cpp)
-target_link_libraries(QueueHandler rabbitmq)
+include_directories(utility)
+add_subdirectory(utility)
 
-add_library(Worker Worker.h Worker.cpp)
+include_directories(connectionHandler)
+add_subdirectory(connectionHandler)
 
-SET (WORKERS listner
+include_directories(workers)
+add_subdirectory(workers)
+
+SET (PROGS listner
              speaker)
 
-FOREACH(item ${WORKERS})
+FOREACH(item ${PROGS})
     add_executable(${item} "${item}.cpp")
-    target_link_libraries(${item} Worker QueueHandler rabbitmq)
+    target_link_libraries(${item} utility_h Workers QueueConnectionHandler rabbitmq)
 ENDFOREACH()

@@ -3,6 +3,7 @@
 //
 
 #include "QueueConnectionHandler.h"
+#include "utility.hpp"
 
 int main() {
     using Builder = AMQP::ConnectionBuilder;
