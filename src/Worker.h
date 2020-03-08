@@ -6,26 +6,41 @@
 #define HUFFMANCODE_WORKER_H
 
 #include <future>
-#include <vector>
+#include <list>
+#include <functional>
 
 template <class Callback>
 class WorkersPool {
-    inline static const std::size_t MAX_WORKERS_NUMBER = 4;
 private:
-    std::vector<std::future<void>> workers_;
+    std::list<std::future<void>> workers_;
     Callback callback_;
+    const size_t workers_max_number_;
 public:
-    WorkersPool(Callback callback):
-        workers_(MAX_WORKERS_NUMBER),
-        callback_(callback) {}
-
-    template <typename T>
-    void ApplyToValue(const T& value) const {
-        bool send = false;
-        while (!send) {
-            for (size_t worker_ind = 0; worker_ind < workers_.size(); worker_ind++) {
+    explicit WorkersPool(Callback callback, size_t workers_max_number = 4):
+        workers_(),
+        callback_(std::move(callback)),
+        workers_max_number_(workers_max_number) {}
+    void Wait() {
+        for (const auto& worker: workers_)
+            worker.wait();
+        workers_.clear();
+    }
+    bool WaitFor(std::chrono::milliseconds duration) {
+        for (auto it = workers_.begin(); it != workers_.end(); it = std::next(it))
+            if (it->wait_for(duration) == std::future_status::ready) {
+                workers_.erase(it);
+                return true;
             }
-        }
+        return false;
+    }
+    template <typename Arg>
+    void Processing(Arg&& arg) {
+        while (workers_.size() >= workers_max_number_)
+            WaitFor(std::chrono::milliseconds(2));
+        workers_.emplace_back(std::async([&](Arg&& arg){callback_(arg);}, arg));
+    }
+    const Callback& InnerProcessor() const {
+        return callback_;
     }
 };
 

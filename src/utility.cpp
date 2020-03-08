@@ -16,6 +16,17 @@ unsigned long long operator""_exclusive(unsigned long long value) { return value
 unsigned long long operator""_autodelete(unsigned long long value) { return value; }
 
 namespace UTILITY {
+    std::string attach_prefix(std::string prefix, std::string prefix_delimiter,
+            std::string str) { return std::move(prefix) + move(prefix_delimiter) + std::move(str); }
+    std::pair<std::optional<std::string>, std::string>
+    detach_prefix(std::string_view str, std::string_view prefix_delimiter) {
+        std::size_t pos = str.find(prefix_delimiter);
+        if (pos == std::string::npos)
+            return {std::nullopt, std::string(str)};
+        return {std::string(str.substr(0, pos)),
+                std::string(str.substr(pos + 1))};
+    }
+
     void die(const char *fmt, ...) {
         va_list ap;
         va_start(ap, fmt);

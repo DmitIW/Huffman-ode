@@ -8,5 +8,5 @@ SET (WORKERS listner
 
 FOREACH(item ${WORKERS})
     add_executable(${item} "${item}.cpp")
-    target_link_libraries(${item} Wroker QueueHandler rabbitmq)
+    target_link_libraries(${item} Worker QueueHandler rabbitmq)
 ENDFOREACH()

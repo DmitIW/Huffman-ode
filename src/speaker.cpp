@@ -12,9 +12,12 @@ int main() {
     Connector connector = Builder().Build();
     Speaker speaker = connector.CreateSpeaker(AMQP::SpeakAdapter());
 
-    speaker.Publish("First message: Hello, World!");
-    speaker.Publish("Second message: I'm still alive;)");
-    speaker.Publish("Third message: Tired with all these, for restful death I cry:\n"
+    speaker.Publish(UTILITY::attach_prefix(UTILITY::ON_PROCESSING_PREFIX, UTILITY::PREFIX_DELIMITER,
+            "First message: Hello, World!"));
+    speaker.Publish(UTILITY::attach_prefix(UTILITY::ON_PROCESSING_PREFIX, UTILITY::PREFIX_DELIMITER,
+            "Second message: I'm still alive;)"));
+    speaker.Publish(UTILITY::attach_prefix(UTILITY::ON_PROCESSING_PREFIX, UTILITY::PREFIX_DELIMITER,
+                "Third message: Tired with all these, for restful death I cry:\n"
                     "As to behold desert a beggar born,\n"
                     "And needy nothing trimmed in jollity,\n"
                     "And purest faith unhappily forsworn,\n"
@@ -27,6 +30,8 @@ int main() {
                     "And simple truth miscalled simplicity,\n"
                     "And captive good attending captain10 ill:\n"
                     "Tired with all these, from these would I be gone,\n"
-                    "Save that, to die, I leave my love alone.");
-    speaker.Publish("Fourth message: It was Shakespear sonnet");
+                    "Save that, to die, I leave my love alone."));
+    speaker.Publish(UTILITY::attach_prefix(UTILITY::ON_PROCESSING_PREFIX, UTILITY::PREFIX_DELIMITER,
+            "Fourth message: It was Shakespear sonnet"));
+    speaker.Publish(UTILITY::attach_prefix(UTILITY::ON_END_PREFIX, UTILITY::PREFIX_DELIMITER, "END"));
 }
