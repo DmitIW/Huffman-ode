@@ -1,0 +1,2 @@
+add_library(ThreadSafetyHashTable HashTable.h HashTable.cpp)
+target_link_libraries(ThreadSafetyHashTable utility_h)
