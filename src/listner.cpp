@@ -5,7 +5,9 @@
 #include "QueueConnectionHandler.h"
 #include "Worker.h"
 #include "utility.hpp"
+#include "HashTable.h"
 
+#include <algorithm>
 #include <iostream>
 #include <chrono>
 #include <thread>
@@ -43,11 +45,32 @@ public:
     }
 };
 
+class SymbolsStats {
+private:
+    ConcurrentHashTable<char, int> storage;
+public:
+    SymbolsStats():
+        storage(1000) {}
+    void operator()(string_view msg) {
+        for (auto symbol : msg)
+            storage[symbol].ref_to_value++;
+    }
+    void Print() const {
+        auto storage_dump = storage.GetDumpVec();
+        sort(storage_dump.begin(), storage_dump.end(),
+                [](const pair<char, int>& lhs, const pair<char, int>& rhs){
+           return lhs.second > rhs.second;
+        });
+        for (auto [symbol, count]: storage_dump)
+            cout << "Symbol: " << symbol << "; count: " << count << endl;
+    }
+};
+
 int main() {
     using Builder = AMQP::ConnectionBuilder;
     using Connector = AMQP::Connector;
     using Consumer = AMQP::ConsumeHandler;
-    using Callback = PrintBody;
+    using Callback = SymbolsStats;
 
     Connector connector = Builder().Build();
     Consumer consumer = connector.CreateConsumer(AMQP::ConsumeAdapter());
