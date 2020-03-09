@@ -2,6 +2,12 @@
 // Created by dmitri on 09.03.2020.
 //
 
+//
+// Принимает два или один аргумент на вход. Вычисляет Код Хаффмана по всем файлам с расширением .txt в директории
+// Сохраняет результаты в два файла: SymbolStats.json - кол-во вхождений символов в корпус, HuffmanCode.json - json с результирующим кодом.
+// Аргументы: первый (обязательный) - путь к директории с корпусом текстов, второй (опционально) - путь к директории, куда будут сохранены результаты
+//
+
 #include "utility.hpp"
 #include "QueueConnectionHandler.h"
 #include "Reader.h"
@@ -17,7 +23,6 @@
 #include <fstream>
 
 #include "rapidjson/writer.h"
-#include "rapidjson/prettywriter.h"
 #include "rapidjson/stringbuffer.h"
 
 using namespace std;
@@ -90,7 +95,7 @@ public:
     }
 };
 
-void Consumer() {
+void Consumer(const string& path_to) {
     AMQP::Connector connector = AMQP::ConnectionBuilder()
             .SetBindingKey(QUEUE_KEY)
             .Build();
@@ -116,7 +121,7 @@ void Consumer() {
                 on_processing = false;
             }
         });
-    workers.InnerProcessor().Construct("");
+    workers.InnerProcessor().Construct(path_to);
 }
 
 void Speaker(const string& path_to) {
@@ -148,7 +153,7 @@ int main(int argc, char* argv[]) {
         return 0;
     }
 
-    future<void> consume_future = async(Consumer);
+    future<void> consume_future = async(Consumer, argc == 2 ? "" : argv[2]);
     this_thread::sleep_for(chrono::milliseconds (200));
     Speaker(argv[1]);
 }

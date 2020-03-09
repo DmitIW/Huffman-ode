@@ -4,12 +4,19 @@
 [Wikipedia](https://ru.wikipedia.org/wiki/Код_Хаффмана)
 ##### Неформальное описание алгоритма:
 [Habr](https://habr.com/ru/post/144200/)
-##### Message Queue:
+##### Message Queue Broker:
 [RabbitMQ](https://www.rabbitmq.com)
-##### Requierments:
-[AMQP-CPP](https://github.com/CopernicaMarketingSoftware/AMQP-CPP) для работы с RabbitMQ из C++. 
-Уже включена в репозиторий.
+##### Использумеые сторонние библиотеки:
+[rabbitmq-c](https://github.com/alanxz/rabbitmq-c)
 
-[POCO C++ lib](https://pocoproject.org). Для установки: 
+[rapidjson](https://rapidjson.org/index.html)
 
-sudo apt-get install cmake libpoco-dev
+##### Сборка:
+1. git clone https://github.com/DmitIW/HuffmanCode.git
+2. mkdir build
+3. cd build
+4. cmake ..
+5. make
+##### Пример запуска:
+./src/HuffmanCodeService path/to/txt/directory [path/to/output/directory] 
+
