@@ -2,6 +2,11 @@
 // Created by dmitri on 07.03.2020.
 //
 
+//
+// Пример работы приемника с канала очереди. Принимает сообщение и помещает на обработку в пул воркеров.
+// При этом обрабатывающий сценарий для пула воркеров задается пользователем.
+//
+
 #include "QueueConnectionHandler.h"
 #include "Worker.h"
 #include "utility.hpp"
@@ -14,6 +19,8 @@
 
 using namespace std;
 
+
+// Набирает все входящие сообщения в единое хранилище
 class PrintBody {
 private:
   struct synchronize {
@@ -45,6 +52,7 @@ public:
     }
 };
 
+// Считает статистику вхождения символов для всех входящих сообщений. Использует потокобезопасную хэш-таблицу.
 class SymbolsStats {
 private:
     ConcurrentHashTable<char, int> storage;
