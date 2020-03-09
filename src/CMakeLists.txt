@@ -14,7 +14,10 @@ include_directories(TSHashTable)
 add_subdirectory(TSHashTable)
 
 SET (PROGS listner
-             speaker)
+             speaker
+        HuffmanCodeService)
+
+include_directories(rapidjson)
 
 FOREACH(item ${PROGS})
     add_executable(${item} "${item}.cpp")

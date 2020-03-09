@@ -3,7 +3,7 @@ project(${PROJECT} C CXX)
 cmake_minimum_required(VERSION 3.0)
 
 set(CMAKE_CXX_STANDARD 20)
-add_definitions(-Wall -Wextra -pedantic)
+add_definitions(-Wall -Wextra -pedantic -O2)
 
 IF (NOT EXISTS rabbitmq-c/.git)
     message("Rabbitmq-c doesn't exists. Loading submodule...")
