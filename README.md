@@ -13,10 +13,11 @@
 
 ##### Сборка:
 1. git clone https://github.com/DmitIW/HuffmanCode.git
-2. mkdir build
-3. cd build
-4. cmake ..
-5. make
+2. cd HuffmanCode
+3. mkdir build
+4. cd build
+5. cmake ..
+6. make
 ##### Пример запуска:
 ./src/HuffmanCodeService path/to/txt/directory [path/to/output/directory] 
 
