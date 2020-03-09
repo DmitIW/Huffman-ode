@@ -156,4 +156,5 @@ int main(int argc, char* argv[]) {
     future<void> consume_future = async(Consumer, argc == 2 ? "" : argv[2]);
     this_thread::sleep_for(chrono::milliseconds (200));
     Speaker(argv[1]);
+    consume_future.wait();
 }
